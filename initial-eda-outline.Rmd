@@ -8,13 +8,26 @@ This is an outline for your Initial EDA. You can follow this outline, or you can
 
 ## Research Question 
 
-I originally wanted to explore how simplification process that the Japanese Ministry of Education used to compile their official list of "regular use" characters, but after submitting my topic proposal I realized
+### Pretext
+I originally wanted to explore how simplification process that the Japanese Ministry of Education used to compile their official list of "regular use" characters (writing), but after submitting my topic proposal I realized
 my datasets aren't quite complete enough with traditional character detail to adequately ask this question. Upon consideration, this makes total sense since the government compiled a formal list of characters at the
 same time they began simplification. As such, I would like to explore a slightly different question in the context of these datasets.
 
+
+#### Notable Terms Referred in Question
+- "radical" in this context refers to the most basic element of the character that hints at its meaning. Using the above as an example, 
+木, pronounced "ki", means "tree" or "wood". The character 
+休, pronounced "kyuu", means "relax", and it uses the radical for tree and the radical for person to mean "relaxing" or "break," evoking the image a person relaxing in the shade of a tree. So basically, (person) 人 + (tree) 木 = (rest/relax) 休
+
+- The term "kanji" literally means "Chinese character" in Japanese, and refers to the characters Japanese borrowed from China to write Japanese. These characters, unlike English, convey a specific meaning as opposed to a specific pronunciation. So for example, the character "人" means person, but its pronunciation can change depending on the word. 
+
+### Actual Question
+
 After looking at my datasets, I think it would be interesting if I compared the jouyou kanji with a Japanese word frequency list to determine if the character's radical correlates to the frequency of the character.
 
-To ask this as a question, it would be something like "Are the radicals related to the frequency of a given kanji in the language?" A concrete example of this would be something like "if the kanji 木 is quite frequent, does that mean the kanji 休 is also relatively frequent?"
+To ask this as a question, it would be something like "Are the radicals related to the frequency of a given kanji in the Japanese language?" A concrete example of this would be something like "if the radical 木 is quite frequent, does that mean the kanji 休 is also relatively frequent?"
+
+ 
 
 ```{r}
 library(tidyverse)
@@ -30,11 +43,86 @@ Include R code and written explanation to import your **TWO** data sets.
 Following the advice of the assignment, I downloaded both sets off kaggle and included the csv files
 in my project repository. I'm importing them using R's native `read.csv` function, so importing both files was a relatively seamless process.
 
+As you can see below, the csv files I'm including is 
+- "japanese_lemmas.csv" 
+  - This file contains data that relates various basic Japanese words to their frequency in the language.
+- "joyo_kanji.csv."
+  - This file contains various information about the characters registered as "common use" by the Japanese Ministry of Education such as their radical and the number of strokes in the character.
+
 ```{r}
 joyoKanji <- read.csv("joyo_kanji.csv")
 lemmaFrequency <- read.csv("japanese_lemmas.csv")
 ```
 
+
+#### About the Data
+
+I got both of these datasets from Kaggle, an online repository of freely available, user produced data.
+
+Joyo Kanji:
+- Who
+  - This dataset was uploaded by user `ANTHOUS`.
+- What
+  - This dataset lists each of the kanjis registered in the [Joyo Kanji](https://en.wikipedia.org/wiki/List_of_j%C5%8Dy%C5%8D_kanji), associating them with several key variables.
+    - `old`
+      - Kanji that were simplified during the registration period have their "pre-simplification" form listed in this column. 
+      - Japanese simplification was rather conservative, so this column has many NA values.
+      - Non-NA values in this column can be used to uniquely identify a row.
+    - `new`
+      - The officially registered official form of each kanji. 
+      - By definition, this column must have no NA values.
+      - Also by definition, the value in this column can uniquely identify its respective entry.
+    - `radical`
+      - Identifies the radical/root character of each kanji. 
+      - Kanji that are their own radicals list themselves as such (人's radical is 人).
+      - Every character either has or is a radical, so there are no NA values in this column.
+      - Radicals are categorical in nature, since multiple characters can share a radical.
+    - `strokes`
+      - Records the number of strokes in each character.
+      - Kanji have an assigned "correct" stroke order, so the number of strokes is of interest.
+      - Each character has strokes, so there are no NA values in this column.
+      - While number of strokes is often treated as categorical, strictly speaking it is quantitative.
+    - `grade`
+      - The grade in which Japanese students learn the character in school.
+      - This is a categorical variable that specifically differentiates between the 3rd, 4th, 5th, and 6th grades.
+      - Kanji that are learned beyond primary school are simply listed as `S` for secondary school.
+      - Since the Ministry of Education assigns a grade level to each kanji, there are no NA values in this column.
+    - `year_added`
+      - The year in which the kanji was added to the registry. 
+      - The original list was written up in 1946, with more entries being added as the need arose. 
+      - Kanji that were part of the original list have this field listed as NA, meaning it was introduced after 1946.
+      - This variable is also one in which the border between categorical and quantitative is blurred, but given that we most often use
+      years categorically, I consider this to be a categorical variable.
+      
+    I don't expect this dataset to contain outliers of any significance, since this is basically just a registry of kanji.
+
+- When
+  - This dataset was uploaded 5 years ago.
+- Why
+  - User `ANTHAUS` simply writes "When you learn Japanese, you can't avoid it..." under the `Inspiration` section on the kaggle page.
+- How
+   - The data was collected from the above Wikipedia page.
+   
+Japanese Lemmas:
+- Who
+   - This dataset was uploaded by user `Rachel Tatman`.
+- What
+   - This dataset relates lemmas, basic word form of a word, to its frequency in the langugae.
+   - For example, the lemma of the English words "going" and "went" is "go".
+   - From the kaggle page description: "This dataset contains the most common Japanese lemmas from the Internet Corpus, as tagged by the ChaSen morphological tagger for Japanese (http://chasen.naist.jp/hiki/ChaSen/). For each lemma, both the frequency (number of times it occurs in the corpus) and its relative rank to other lemmas is provided."
+   - variables
+      - `rank`
+        - Where each lemma stands in terms of frequency relative to the other lemmas.
+        - This variable uniquely identifies any row in the table.
+      - `frequency`
+        - The frequency of each lemma in the context of the Internet Corpus in terms of the number of occurrences tagged by the ChaSen morphological tagger.
+        - This variable is quantitative, and there are no NA values.
+      - `lemma`
+        - The lemma being observed itself.
+        - This variable also uniquely identifies any row.
+      Lemmas extend beyond kanji, and since this set discusses the frequency of lemmas, we have to transform the data mildly to reach our common medium.
+      This is easily done by splitting all lemmas into individual characters and performing a left join on the joyo kanji set.
+      Inherent relations between rows in terms of hierarchy and spatial location don't really apply here, since the characters are just that. 
 #### Data Wrangling 
 
 Include R code and written explanation for wangling your data (you can make multiple wrangled data sets). 
@@ -110,8 +198,12 @@ radicalFrequency |>
     geom_bar(stat = "summary", fun = "sum", fill = "#112446") +
     theme(text = element_text(family = "Hiragino Sans")) +
     facet_wrap(~ strokeCount, scales = "free") +
-    xlab("Radical") + 
-    ylab("Frequency")
+    labs(
+      title = "Radicals by Frequency grouped by # of Strokes in the Parent Kanji",
+      x = "Radical",
+      y = "Frequency"
+    )
+
 ```
 The above graphic ranks each radical according to the stroke count of the kanji it comes from. This graph will be quite useful when answering my research question, since we can track the frequency of the radical across kanjis with various stroke orders. From this graph, we see that the relative frequencies for radicals across stroke orders holds. For example, the character 言 appears to be pretty frequent across kanjis of varying stroke orders, while 刀 almost always appears on the lower end when present. While I have yet to perform a thorough analysis on this chart, it will certainly be helpful as is with answering my question.
 
