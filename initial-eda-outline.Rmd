@@ -8,8 +8,17 @@ This is an outline for your Initial EDA. You can follow this outline, or you can
 
 ## Research Question 
 
-State your specific research question and why it is interesting. 
+I originally wanted to explore how simplification process that the Japanese Ministry of Education used to compile their official list of "regular use" characters, but after submitting my topic proposal I realized
+my datasets aren't quite complete enough with traditional character detail to adequately ask this question. Upon consideration, this makes total sense since the government compiled a formal list of characters at the
+same time they began simplification. As such, I would like to explore a slightly different question in the context of these datasets.
 
+After looking at my datasets, I think it would be interesting if I compared the jouyou kanji with a Japanese word frequency list to determine if the character's radical correlates to the frequency of the character.
+
+To ask this as a question, it would be something like "Are the radicals related to the frequency of a given kanji in the language?" A concrete example of this would be something like "if the kanji 木 is quite frequent, does that mean the kanji 休 is also relatively frequent?"
+
+```{r}
+library(tidyverse)
+```
 
 
 ## Data Processing 
@@ -18,12 +27,48 @@ State your specific research question and why it is interesting.
 
 Include R code and written explanation to import your **TWO** data sets.
 
+Following the advice of the assignment, I downloaded both sets off kaggle and included the csv files
+in my project repository. I'm importing them using R's native `read.csv` function, so importing both files was a relatively seamless process.
+
+```{r}
+joyoKanji <- read.csv("joyo_kanji.csv")
+lemmaFrequency <- read.csv("japanese_lemmas.csv")
+```
+
 #### Data Wrangling 
 
 Include R code and written explanation for wangling your data (you can make multiple wrangled data sets). 
 
+In order to properly join my datasets into something glyph ready, I first need to reduce them to the same medium. The Joyo kanji list is already ready, but the lemma frequency isn't. It instead contains lemmas, or the most basic form of words and particles, ranked with some frequency. My plan to derive the frequency of kanji from this is to split the word into its individual characters and sum up the frequency of the words they appear in. For example, if we take the character 二, meaning two, and we see two words 二人 and 二日 with frequencies of 10 and 20, this system would attribute a frequency of 30 to the character 二. 
 
+After wrangling the data to get a kanji frequency set, I just join the tables together. I use a left join since the lemma set contains characters outside the Joyo kanji list. There are some characters in the joyo kanji that aren't accounted for in our freshly wrangled set (which means we get NA frequencies), so I added a filter step to handle that. The resulting set is as follows.
 
+```{r}
+charByFrequency <- lemmaFrequency |>
+  mutate(kanji = strsplit(as.character(lemma), "")) |>
+    unnest(kanji) |>
+    group_by(kanji) |>
+    summarize(frequency = sum(frequency))
+
+joyoKanjiReduced <- joyoKanji |>
+  mutate(kanji = new) |>
+  select(kanji, radical, strokes)
+
+wrangledSet <- 
+  left_join(joyoKanjiReduced, charByFrequency, by = "kanji") |>
+  filter(!is.na(frequency))
+wrangledSet
+```
+```{r}
+radicalFrequency <- wrangledSet |>
+  group_by(radical) |>
+  summarize(totalFrequency = sum(frequency) / 1000, strokeCount = strokes)
+
+radFreqWOStrokes <- wrangledSet |>
+  group_by(radical) |>
+  summarize(totalFrequency = sum(frequency) / 1000)
+radicalFrequency
+```
 
 ## Data Visualization
 
@@ -31,11 +76,48 @@ Include R code and written explanation for wangling your data (you can make mult
 
 Include R code to make one data visualization (I would encourage you to use 3 or more variables). Include a brief written description of what your graph shows. Is this graph helpful in answering your research question? If it is helpful, will you need to add/modify anything in this graph in the final report? 
 
+```{r}
+library(ggplot2)
+
+radFreqWOStrokes |>
+   arrange(desc(totalFrequency)) |>
+    slice(1:50) |>
+    ggplot() +
+    aes(x = reorder(radical, -totalFrequency), y = totalFrequency) +
+    geom_bar(stat = "summary", fun = "sum", fill = "#112446") +
+    theme(text = element_text(family = "Hiragino Sans")) +
+    xlab("Radical") + 
+    ylab("Frequency")
+```
+Here is a plot of the top 50 most frequent radicals in the set ranked by frequency. This graph is somewhat helpful in answering my research question since it relates radicals with their frequencies in the language, but it's missing something to truly associate kanji with these frequencies. As such, I will likely need to consider extra variables to make it truly helpful. 
+
+
+
 #### Plot 2
 
 Include R code to make one data visualization (I would encourage you to use 3 or more variables). Include a brief written description of what your graph shows. Is this graph helpful in answering your research question? If it is helpful, will you need to add/modify anything in this graph in the final report? 
+
+```{r}
+includedRadicals <- radFreqWOStrokes |>
+   arrange(desc(totalFrequency)) |>
+    slice(1:10)
+
+radicalFrequency |>
+   arrange(desc(totalFrequency)) |>
+    filter(radical %in% includedRadicals$radical) |>
+    ggplot() +
+    aes(x = reorder(radical, -totalFrequency), y = totalFrequency) +
+    geom_bar(stat = "summary", fun = "sum", fill = "#112446") +
+    theme(text = element_text(family = "Hiragino Sans")) +
+    facet_wrap(~ strokeCount, scales = "free") +
+    xlab("Radical") + 
+    ylab("Frequency")
+```
+The above graphic ranks each radical according to the stroke count of the kanji it comes from. This graph will be quite useful when answering my research question, since we can track the frequency of the radical across kanjis with various stroke orders. From this graph, we see that the relative frequencies for radicals across stroke orders holds. For example, the character 言 appears to be pretty frequent across kanjis of varying stroke orders, while 刀 almost always appears on the lower end when present. While I have yet to perform a thorough analysis on this chart, it will certainly be helpful as is with answering my question.
 
 
 ## Conclusion
 
 Include your initial intuition as to what the answer to your research question is using the data sets and visualizations you created. 
+
+Based on these graphs, my intuited answer to the question is "yes." It looks like the radicals broadly maintain relative frequencies across kanji stroke counts, and I suspect that this will translate to the relative frequencies of kanji within their stroke count classes as well. To get a proper answer, though, I will need to create a plot that somehow compares the frequencies of radicals to the frequencies of kanji in the same stroke count class.
