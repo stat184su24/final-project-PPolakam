@@ -93,4 +93,31 @@ Here is a plot of the top 50 most frequent radicals in the set ranked by frequen
 
 
 
+#### Plot 2
 
+Include R code to make one data visualization (I would encourage you to use 3 or more variables). Include a brief written description of what your graph shows. Is this graph helpful in answering your research question? If it is helpful, will you need to add/modify anything in this graph in the final report? 
+
+```{r}
+includedRadicals <- radFreqWOStrokes |>
+   arrange(desc(totalFrequency)) |>
+    slice(1:10)
+
+radicalFrequency |>
+   arrange(desc(totalFrequency)) |>
+    filter(radical %in% includedRadicals$radical) |>
+    ggplot() +
+    aes(x = reorder(radical, -totalFrequency), y = totalFrequency) +
+    geom_bar(stat = "summary", fun = "sum", fill = "#112446") +
+    theme(text = element_text(family = "Hiragino Sans")) +
+    facet_wrap(~ strokeCount, scales = "free") +
+    xlab("Radical") + 
+    ylab("Frequency")
+```
+The above graphic ranks each radical according to the stroke count of the kanji it comes from. This graph will be quite useful when answering my research question, since we can track the frequency of the radical across kanjis with various stroke orders. From this graph, we see that the relative frequencies for radicals across stroke orders holds. For example, the character 言 appears to be pretty frequent across kanjis of varying stroke orders, while 刀 almost always appears on the lower end when present. While I have yet to perform a thorough analysis on this chart, it will certainly be helpful as is with answering my question.
+
+
+## Conclusion
+
+Include your initial intuition as to what the answer to your research question is using the data sets and visualizations you created. 
+
+Based on these graphs, my intuited answer to the question is "yes." It looks like the radicals broadly maintain relative frequencies across kanji stroke counts, and I suspect that this will translate to the relative frequencies of kanji within their stroke count classes as well. To get a proper answer, though, I will need to create a plot that somehow compares the frequencies of radicals to the frequencies of kanji in the same stroke count class.
