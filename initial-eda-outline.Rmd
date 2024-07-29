@@ -66,7 +66,7 @@ Joyo Kanji:
   - This dataset lists each of the kanjis registered in the [Joyo Kanji](https://en.wikipedia.org/wiki/List_of_j%C5%8Dy%C5%8D_kanji), associating them with several key variables.
     - `old`
       - Kanji that were simplified during the registration period have their "pre-simplification" form listed in this column. 
-      - Japanese simplification was rather conservative, so this column has many NA values.
+      - Japanese simplification was rather conservative, so this column has many NA values, with 83% of the entries being null.
       - Non-NA values in this column can be used to uniquely identify a row.
     - `new`
       - The officially registered official form of each kanji. 
@@ -77,24 +77,29 @@ Joyo Kanji:
       - Kanji that are their own radicals list themselves as such (人's radical is 人).
       - Every character either has or is a radical, so there are no NA values in this column.
       - Radicals are categorical in nature, since multiple characters can share a radical.
+      - The most common radical appears to be the one for "water" (水) at 6%.
     - `strokes`
       - Records the number of strokes in each character.
       - Kanji have an assigned "correct" stroke order, so the number of strokes is of interest.
       - Each character has strokes, so there are no NA values in this column.
       - While number of strokes is often treated as categorical, strictly speaking it is quantitative.
+      - The average kanji stroke count is between 9.4 and 12.2 strokes.
     - `grade`
       - The grade in which Japanese students learn the character in school.
       - This is a categorical variable that specifically differentiates between the 3rd, 4th, 5th, and 6th grades.
       - Kanji that are learned beyond primary school are simply listed as `S` for secondary school.
       - Since the Ministry of Education assigns a grade level to each kanji, there are no NA values in this column.
+      - Over half of the kanji in the list (53%) are listed as `S`.
     - `year_added`
       - The year in which the kanji was added to the registry. 
       - The original list was written up in 1946, with more entries being added as the need arose. 
       - Kanji that were part of the original list have this field listed as NA, meaning it was introduced after 1946.
-      - This variable is also one in which the border between categorical and quantitative is blurred, but given that we most often use
-      years categorically, I consider this to be a categorical variable.
+      - This variable is also one in which the border between categorical and quantitative is blurred, but given that we most often use years categorically, I consider this to be a categorical variable.
+      - While most of the kanji in the list were original entries from 1946, the years that saw the most kanji added to the list after that is the range of 2007-2010
       
     I don't expect this dataset to contain outliers of any significance, since this is basically just a registry of kanji.
+    
+    None of these variables are coded.
 
 - When
   - This dataset was uploaded 5 years ago.
@@ -120,6 +125,17 @@ Japanese Lemmas:
       - `lemma`
         - The lemma being observed itself.
         - This variable also uniquely identifies any row.
+        
+- When
+  - This set was uploaded 7 years ago.
+- Why
+  - Here is what the user listed under the "Inspiration" section of the kaggle page.
+  - "This dataset is an especially helpful resource for work on Japanese texts.
+
+      What is the distribution of hiragana, katakana and kanji characters among common lemmas?
+      Can you use machine translation to find the equivalent lemmas and their frequency in other languages? Is there a lot of cross-linguistic difference between what concepts are the most frequent?
+      Which parts of speech are the most common in Japanese? Are these different across languages?
+    "
       Lemmas extend beyond kanji, and since this set discusses the frequency of lemmas, we have to transform the data mildly to reach our common medium.
       This is easily done by splitting all lemmas into individual characters and performing a left join on the joyo kanji set.
       Inherent relations between rows in terms of hierarchy and spatial location don't really apply here, since the characters are just that. 
@@ -177,6 +193,8 @@ radFreqWOStrokes |>
     xlab("Radical") + 
     ylab("Frequency")
 ```
+`variables: x = Radical, y = Frequency`
+
 Here is a plot of the top 50 most frequent radicals in the set ranked by frequency. This graph is somewhat helpful in answering my research question since it relates radicals with their frequencies in the language, but it's missing something to truly associate kanji with these frequencies. As such, I will likely need to consider extra variables to make it truly helpful. 
 
 
@@ -205,6 +223,8 @@ radicalFrequency |>
     )
 
 ```
+`Variables: x = Radical, y = Frequency, Facet = StrokeCount`
+
 The above graphic ranks each radical according to the stroke count of the kanji it comes from. This graph will be quite useful when answering my research question, since we can track the frequency of the radical across kanjis with various stroke orders. From this graph, we see that the relative frequencies for radicals across stroke orders holds. For example, the character 言 appears to be pretty frequent across kanjis of varying stroke orders, while 刀 almost always appears on the lower end when present. While I have yet to perform a thorough analysis on this chart, it will certainly be helpful as is with answering my question.
 
 
