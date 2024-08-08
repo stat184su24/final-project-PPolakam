@@ -58,15 +58,13 @@ Line #105
 
 
 (A) .Rmd Line number(s) for use of multiple different geoms on a single plot:  
+Line# 155
 
 (B) .Rmd Line number(s) for use of multiple aesthetics:  
+Line# 107, Line #155
 
 (C) .Rmd Line number(s) for use of layered graphics:  
-
-(D) .Rmd Line number(s) for use of maps:  
-
-(E) .Rmd Line number(s) for use of decision tree or dendogram:    
-
+Line# 155
 
 
 
