@@ -4,34 +4,190 @@ author: "Student name"
 output: html_notebook
 ---
 
-This is an outline for your final project. You can follow this outline, or you can modify it as you see fit. Do what works best for your project. 
+## Context
 
-## Research Question 
+The Japanese language is written using a combination of 3 different writing systems. Of these 3, "kanji" stand out as particularly interesting for several reasons. The kanji, literally meaning "Chinese character," are logographic characters that Japanese imported from Chinese long ago. Being logographic, as opposed to phonetic, means that each symbol conveys a certain meaning instead of a certain sound. The English letter `a`, for example, represents a specific sound. While this sound may change depending on the word (`a` in "change" and in "glad" are different, for example), we don't associate words with meaning because that sound is in those words (`a` doesn't contribute to the meaning of words). This is essentially the opposite for logographic scripts. For example, the symbol 人 means "person". If you see this symbol in a word, it means that the word is related to the concept of a person somehow. For example, the word for "alone" or "one person" in Japanese is 一人 (hitori), and the word for "humanity" is 人間 (ningen). We can see that both words have something to do with people, but the pronunciation of the symbol is not consistent between words (人 = "ri" in "hitori" and "nin" in "ningen"). This fact means that several thousands of characters need to be learned in order to properly read the language. Specifically, the Japanese Ministry of Education compiled a list of 2000+ common-use kanji titled the "jouyou kanji." This means that in order to properly read and write the language in all common cases, memorizing all 2000+ characters is a necessity. 
 
-State your general specific question and why it is interesting. 
+There are several thousand characters, but beyond a point, many are "composite" of other characters. Basically, you take two or more characters and combine them somehow to form a new character (something like how `æ` is `a` + `e`, but for logograms). For example, the character for "absence" or "relax" is 休, which itself is a combination of the character for person(人) and tree/wood(木). As such, one may read this as "a person resting next to a tree" (as a side note, this logic does not hold true for all characters. It works to convey my point, though). In combined characters like this, we often identify a component to serve as a "root" or "main" character. In the case of the relax character, this root component is person(人). The formal name for this root component is the "radical" of a character. 
 
+
+For the purposes of this project, the key terms I'll be using from all this are as follows.
+- Kanji: "Chinese characters" that were imported into Japanese.
+- Radical: The "root component" of a kanji. Characters that are not themselves composed are their own radicals (the radical for person(人) is thus person(人)).
+
+## Research Question
+
+The question I aim to answer in this project is "can the relative frequency of radicals be used to predict the relative frequency of a character?" That is, if 人(person) is a common radical amongst other radicals, can we take characters that use it , like 僕(personal pronoun for boys) and 休(relax, break), to be relatively common amongst other kanji? This is useful because if I know that 言(speech, word) is a common radical, and I encounter a character like 語(language), then I can infer that 語(language) should be relatively common (in other words, worth learning). 
+
+An important clarification I want to make at this point is that I am discussing the *relative* frequency of the characters and the radicals. It is useless to explore the actual frequencies of the characters and their radicals, since each character will have their own frequencies. An example that would answer "no" to my question would be if there were several characters whose radicals are very frequent are themselves obscure. If the vast majority of characters generally follow their radicals in terms of relative frequency, I will take that to mean "yes" for my question.
 
 
 ## Data Processing 
 
 #### Data Intake 
 
-Include R code and a written explanation to import your **TWO** data sets.
+```{r}
+library(tidyverse)
+library(ggplot2)
+
+joyoKanji <- read.csv("joyo_kanji.csv")
+lemmaFrequency <- read.csv("japanese_lemmas.csv")
+
+head(joyoKanji, 10)
+```
+
+The first dataset is a set of the jouyou kanji list detailed in the context section above. Each row contains various information about each character in the list, including the character itself. The columns are as follows. `new` is the character itself in its modern form. If the character has an archaic form, it is recorded under `old`. The radical of the character is listed under `radical`, and the stroke count under `strokes`. `grade` describes the grade in primary school in which the character is taught in Japan, where the values range from 1-6 (and a value of `S` indicates that the character is taught beyond 5th grade). If the character was added to the list after its creation, then the year it got added is listed under `year_added`. This information was derived from the wikipedia page on the list.
+
+In essence, this set specifically records each character in the list alongside other useful information.
+
+```{r}
+head(lemmaFrequency, 10)
+```
+
+This dataset defines lemma as follows. `A lemma is the uninflected form of a word. So while “tree” and “trees” are two words, they are the same lemma: “tree”. Similarly, “go”, “went” and “going” are all forms of the underlying lemma “to go”`. The data itself is from "the Internet Corpus."
+
+This set maps each lemma to a frequency according to the Internet Corpus, as well as its relative rank to the other lemmas in the set. The columns are appropriately named to reflect this (`rank`, `frequency`, and `lemma`).
+
+Alone, these datasets are not capable of answering our research question. However, the information within them may be combined in such a way that a set capable of answering the question is produced.
 
 #### Data Wrangling 
 
 Include R code and written explanation for wangling your data (you can make multiple wrangled data sets). 
 
+```{r}
+joyoKanjiReduced <- joyoKanji |>
+  select(new, radical, strokes, grade) |>
+  rename(kanji = new)
 
+kanjiFrequency <- lemmaFrequency |>
+  mutate(kanji = strsplit(as.character(lemma), "")) |>
+  unnest(kanji) |>
+  group_by(kanji) |>
+  summarize(frequency = sum(frequency))
+```
 
+The jouyou kanji set is essentially already prepared, but there are some unnecessary variables present (`year_added` and `old` cannot help us answer the question). As such, we select the rows we want and rename `new` to `kanji` since `old` is gone.
+
+The lemma frequency set, on the other hand, needs some extra work done to it. We are trying to match kanji to kanji, so we need to derive the individual kanji from each lemma. This can be done by splitting the lemma into its individual characters, "unnesting" the characters so that they occupy their own row, and then grouping the rows by the kanji and summing up the frequency values. At this point, the sets are ready to be joined.
+
+```{r}
+WrangledSet <- left_join(
+  joyoKanjiReduced,
+  kanjiFrequency,
+  by = "kanji"
+)
+```
+
+Joining the sets only gets us half-way to where we need to be (it isn't quite "glyph ready" yet...).
+
+Below are the remaining steps to produce a fully glyph ready set.
+
+```{r}
+radicalFrequency <- WrangledSet |>
+  group_by(radical) |>
+  summarize(radicalFrequency = sum(frequency))
+
+WrangledSet <- WrangledSet |>
+  left_join(radicalFrequency, by = "radical") |>
+  filter(!is.na(radicalFrequency))
+
+WrangledSet
+```
+
+We have the kanji frequencies, but we still need the radical frequecies. The first step above handles that by grouping the rows by radical and summing up the kanji frequencies. 
+
+The remaining task is to incorporate the radical frequencies with the kanji frequencies, and that is done through a simple left join. At this point, `WrangledSet` is properly glyph ready.
 
 ## Data Visualization
 
-Include R code and written explanation for your data visualization(s) with at least 3 variables. You must have **at least** one graph. You may have more than one (I would encourage you to have more than one). 
+```{r}
+WrangledSet |>
+  filter(strokes >= 4 & strokes <= 20) |>
+  ggplot() +
+  geom_line(mapping = aes(x = frequency, y = radicalFrequency), color = "blue") +
+  facet_wrap(~ strokes) +
+  labs(
+    x = "Kanji Frequency",
+    y = "Radical Frequency",
+    title = "Radical Frequency vs Parent Kanji Frequency Faceted by Stroke Count"
+  )
+```
+
+The first graph (above) is a plot that compares the frequency of a kanji to its radical's faceted by stroke count. Because there are so many, a meaningful way to organize kanji is to group them by stroke count. Through this, we can see that there seems to be a correlation for kanji of lower stroke counts, particularly from 4-10 (Since kanji below 4 are usually just their own radicals, they cannot be meaningfully included here).
+
+This plot is quite simple to generate, and the code is quite declarative. A simple filtration to remove the insignificant data (<= 4 & >= 20 aren't needed) followed by a geom_line and facet_wrap are all that's needed to generate the plot.
+
+```{r}
+WrangledSet |>
+  ggplot() +
+  geom_line(mapping = aes(x = frequency, y = radicalFrequency), color = "orange") +
+  facet_wrap(~ grade) +
+  labs(
+    x = "Kanji Frequency",
+    y = "Radical Frequency",
+    title = "Radical Frequency vs Parent Kanji Frequency Faceted by Grade Learned"
+  )
+```
+
+This is a plot quite similar to the above plot, except it facets by `grade` instead of `stroke`. `grade` is also a useful means of grouping kanji, but it is less contained in this context since this set throws all non-elementary school kanji in to `S`. This graph reveals that the pattern holds decently well for kanji taught in younger grades, but it starts to fall apart as the grade goes up.
+
+```{r}
+WrangledSet |>
+  ggplot() +
+  geom_line(mapping = aes(x = frequency, y = radicalFrequency), color = "red") +
+  labs(
+    x = "Kanji Frequency",
+    y = "Radical Frequency",
+    title = "Radical Frequency vs Parent Kanji Frequency"
+  )
+```
+
+This graph looks at the kanji all at once without any facet. There is a general pattern to be seen here, but kanji whose frequency is below 500 don't cleanly map to the pattern as well as above 500.
+
+```{r}
+joyoKanji |>
+  group_by(strokes) |>
+  summarize(count = n()) |>
+  ggplot() +
+  geom_bar(mapping = aes(x = strokes, y = count), fill = "navy", stat = "identity") +
+  labs(
+    x = "Stroke Count",
+    title = "Kanji distribution based on Stroke Count"
+  )
+```
+
+This graph displays the distribution of the joyo kanji across the stroke count "spectrum", which is useful because it allows us to make a useful assertion in the conclusion. This was generated by grouping the kanji by stroke count and them summarizing the data with `n()`.
 
 
+```{r}
+WrangledSet |>
+  group_by(strokes) |>
+  summarize(count = sum(frequency)) |>
+  ggplot() +
+  geom_bar(mapping = aes(x = strokes, y = count), fill = "navy", stat = "identity") +
+  labs(
+    x = "Stroke Count",
+    title = "Kanji Frequency distribution based on Stroke Count"
+  )
+```
 
+This plot does something very similar to the previous plot, but instead of producing the distribution, it plots the frequency distribution across the `WrangledSet` (which is effectively still the jouyou kanji). This is the same as the previous plot, but instead of `n()`, we make use of `sum(frequency)`.
 
 ## Conclusion
 
 Answer your research question using the data sets and visualizations you created. 
+
+Based on the sets and visualizations above, I believe we can comfortably answer "yes" to the research question. The assertion that a kanji and its radical are related by frequency appears to apply largely to kanji within the stroke count classes of 4-10 (see 1st graph), and we observe that the mean stroke count for the joyo kanji sits around that 10 stroke count (see 2nd-to-last graph). As such, we can conclude that this assertion is *relatively* present (based on what I specified in the research question section) for around 50% of the registered jouyou kanji, thus answering "yes" to the question.
+
+As a point of practicalness, though, I created a few extra plots to explore where this pattern was most effective in the jouyou kanji list. To summarize those findings, it appears that the pattern holds most true for kanji taught earlier in elementary school, particularly kanji taught in grades 1-3. As such, this pattern can prove useful for students learning kanji in the beginning, but it would prove less useful for more learned/proficient students.
+
+
+## User-made Function
+
+I couldn't find a meaningful place to include a function in my process, but since it's within the requirements I decided to demonstrate that it can be done in this project.
+
+```{r}
+joinWithJoyoKanji <- function(set, by) {
+  left_join(joyoKanji, set, by)
+}
+```
